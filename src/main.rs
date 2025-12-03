@@ -37,6 +37,7 @@ struct CumState {
 
 fn run() -> Result<(), eyre::Report> {
     let file = File::open("measurements.txt")?;
+
     let measurements_bytes = unsafe { Mmap::map(&file) }?;
     measurements_bytes.advise(memmap2::Advice::Sequential)?;
 
@@ -123,8 +124,8 @@ fn run() -> Result<(), eyre::Report> {
     let mut sorted_map = map.into_iter().collect::<Vec<_>>();
     sorted_map.sort_unstable_by_key(|v| v.0);
 
-    for (place, CumState{ min, avg, max, ..}) in sorted_map {
-        println!("{place}={min:.1}/{avg:.1}/{max:.1}");
+    for (place, CumState{ min, avg, max, count }) in sorted_map {
+        println!("{place}={min:.1}/{avg:.1}/{max:.1} ({count})");
     }
 
     Ok(())
