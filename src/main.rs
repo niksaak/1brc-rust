@@ -3,7 +3,7 @@
 use std::{
     io::{prelude::*, Cursor},
     fs::File,
-    collections::BTreeMap,
+    collections::HashMap,
 };
 
 use rayon::prelude::*;
@@ -38,6 +38,7 @@ struct CumState {
 fn run() -> Result<(), eyre::Report> {
     let file = File::open("measurements.txt")?;
     let measurements_bytes = unsafe { Mmap::map(&file) }?;
+    measurements_bytes.advise(memmap2::Advice::Sequential)?;
 
     rayon::ThreadPoolBuilder::new().num_threads(8).build_global()?;
 
@@ -52,7 +53,7 @@ fn run() -> Result<(), eyre::Report> {
         })
 
         .fold(
-            || <BTreeMap<&str, CumState>>::default(),
+            || <HashMap<&str, CumState>>::default(),
             |mut map, (place, reading)| {
                 map.entry(place)
                     .and_modify(|CumState{ min, avg, max, count }| {
@@ -71,7 +72,7 @@ fn run() -> Result<(), eyre::Report> {
         )
 
         .reduce(
-            || <BTreeMap<&str, CumState>>::default(),
+            || <HashMap<&str, CumState>>::default(),
             |mut base, other| {
                 for (place, st) in other {
                     base.entry(place)
@@ -119,7 +120,10 @@ fn run() -> Result<(), eyre::Report> {
     }
     */
 
-    for (place, CumState{ min, avg, max, ..}) in map {
+    let mut sorted_map = map.into_iter().collect::<Vec<_>>();
+    sorted_map.sort_unstable_by_key(|v| v.0);
+
+    for (place, CumState{ min, avg, max, ..}) in sorted_map {
         println!("{place}={min:.1}/{avg:.1}/{max:.1}");
     }
 
